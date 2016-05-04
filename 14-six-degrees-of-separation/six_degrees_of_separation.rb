@@ -40,4 +40,11 @@ end
   end
 end
 
-@connections.each { |x,y| puts x, y, "\n" }
+@connections.sort.each do |owner, degrees|
+  puts owner
+  degrees.each do |deg, mentions|
+    next if mentions.empty?
+    puts mentions.sort.join(", ")
+  end
+  puts "\n"
+end
