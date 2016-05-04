@@ -46,11 +46,12 @@ end
   end
 end
 
+output = File.open("output.txt", "w")
 @connections.sort.each do |owner, degrees|
-  puts owner
+  output.puts owner
   degrees.each do |deg, mentions|
     next if mentions.empty?
-    puts mentions.sort.join(", ")
+    output.puts mentions.sort.join(", ")
   end
-  puts "\n"
+  output.puts "\n" unless @connections.keys.sort.last == owner
 end
