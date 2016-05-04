@@ -1,6 +1,6 @@
 tweets = File.readlines("sample_input.txt")
 
-results = Hash.new( [] )
+results = Hash.new { |h,k| h[k] = [] }
 
 tweets.each do |tweet|
   owner    = tweet.scan(/\A(\w+):/).flatten[0]
@@ -15,8 +15,21 @@ results.each do |owner, mentions|
       results[owner].delete(o)
     end
   end
-
 end
 
-puts results.inspect
+connections = {}
 
+results.each do |owner, mentions|
+  connections[owner] = { first: mentions, second: [] }
+  mentions.each do |mention|
+    results[mention].each do |x|
+      next if x == owner || mentions.include?(x)
+      connections[owner][:second] << x
+    end
+  end
+
+  connections[owner][:first].uniq!
+  connections[owner][:second].uniq!
+end
+
+connections.each { |x,y| puts x, y, "\n" }
