@@ -1,4 +1,4 @@
-tweets = File.readlines("sample_input.txt")
+tweets = File.readlines("complex_input.txt")
 
 @results = Hash.new { |h,k| h[k] = [] }
 
@@ -9,11 +9,16 @@ tweets.each do |tweet|
 end
 
 @results.each do |owner, mentions|
-  @results.each do |o, m|
-    next if owner == o
-    unless mentions.include?(o) && m.include?(owner)
-      @results[owner].delete(o)
-    end
+  @results.keys.each do |o|
+    next if o == owner
+    next if mentions.include?(o) && @results[o].include?(owner)
+    mentions.delete(o)
+  end
+
+  mentions.uniq!
+  m = mentions.dup
+  m.each do |x|
+    mentions.delete(x) unless @results.keys.include?(x)
   end
 end
 
@@ -26,6 +31,7 @@ end
     @connections[owner][degree.to_s] = []
 
     @connections[owner][degree.pred.to_s].each do |mention|
+      next unless @results.keys.include?(mention)
       @results[mention].each do |m|
         next if owner == m
         @connections[owner][degree.to_s] << m
