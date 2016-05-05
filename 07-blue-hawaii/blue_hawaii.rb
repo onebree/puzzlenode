@@ -16,8 +16,8 @@ def seasons_hash(seasons)
   seasons_new = {}
   seasons.each { |season| seasons_new.merge!(season) }
   seasons_new.each do |_, season|
+    season_start = to_date(season["start"], @start.year)
     season["range"] =
-      season_start = to_date(season["start"], @start.year
       if season["start"]  < season["end"]
         (season_start..to_date(season["end"], @start.year))
       else
