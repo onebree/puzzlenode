@@ -1,8 +1,6 @@
-tweets = File.readlines("complex_input.txt")
-
 @results = Hash.new { |h,k| h[k] = [] }
 
-tweets.each do |tweet|
+File.foreach("complex_input.txt") do |tweet|
   owner    = tweet.scan(/\A(\w+):/).flatten[0]
   mentions = tweet.scan(/@(\w+)/).flatten
   @results[owner] = @results[owner] + mentions
