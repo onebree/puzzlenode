@@ -17,38 +17,14 @@ class Turn
     @player = player
     @moves = moves
   end
-
-  # WIP method
-  # Pushes card values from that turn to the appropriate arrays
-  # discard pile, drawn cards, passed cards, received cards
-  def cards
-    draw, receive, discard, pass = [] * 4
-
-    moves.each do |card|
-      value = card[/[0-9JQKA?]{1,2}[CDHS?]/]
-      next if value == "??"
-      case card
-        when /\+.{2,3}:\w+/
-          receive << value
-        when /\+.{2,3}/
-          draw << value
-        when /-.{2,3}:\w+/
-          pass << value
-        when /-.{2,3}/
-          discard << value
-      end
-    end
-    
-    [draw, receive, discard, pass]
-  end
 end
 
 class Player
   attr_accessor :name, :hand
 
   def initialize(name)
-    @name = name
-    @hand = []
+    @name  = name
+    @hand  = []
   end
 
   def remove(card)
@@ -69,23 +45,7 @@ end
   "*"     => Player.new("*")
 }
 
-
 @rounds = []
-
-File.foreach("INPUT.txt") do |turn|
-  player = turn[/\A(\w+|\*) /, 1]
-  moves  = turn.scan /[+-][0-9JQKA?]{1,2}[CDHS?]/
-
-  turn = Turn.new(@players[player], moves)
-
-  if player == "Shady"
-    @round   = Round.new
-    @rounds << @round
-  end
-
-  @round  << turn
-end
-
 
 @cards = []
 @cards_in_play = []
@@ -100,49 +60,70 @@ end
   end
 end
 
+File.foreach("SAMPLE_INPUT.txt") do |turn|
+  player = turn[/\A(\w+|\*) /, 1]
+  moves  = turn.scan /[-+][0-9JQKA\?]{1,2}[CDHS\?]:*\w*/
 
-# Calculate the hand of each player by turn's end
-# Still need to account for the results of a true signal
-# Also, if player discards, remove such card (or ??) from hand
-def calculate_hand(player, move)
-  action = move[/([-+][0-9JQKA?]{1,2}[CDHS?])/, 1]
-  card = action[1..-1]
-  other_player = move[/:(\w+)/, 1]
+  turn = Turn.new(@players[player], moves)
 
-  if action.start_with?  "+"
-    player.add card
-    other_player ? other_player.remove(card) : @cards_in_play.push(card)
-  elsif card.end_with? "-"
-    player.remove card
-    other_player ? other_player.add(card) : @discard.push(card)
+  if player == "Shady"
+    @round   = Round.new
+    @rounds << @round
+  elsif player == "*"
+    # 2D array, where each 1D element is a round
+    # Round 0 is dealing the cards, so an empty array is added instead
+    signal = @players[player]
+    signal.add([]) if signal.hand.empty?
+    signal.add moves
   end
+
+  @round << turn
 end
 
-
-# Calculate whether hints are false, or true (then proceeed)
-# FALSE 
-#   if +card inside discard pile
-#   if -card in discard pile BEFORE Lil's turn
-#   if Rocky has +card
-#   if Rocky has -card:other
-def calculate_hints(move)
-  action = move[/([-+][0-9JQKA?]{1,2}[CDHS?])/, 1]
-  card = action[1..-1]
-  other_player = move[/:(\w+)/, 1]
-end
-
-
-@rounds.each do |round|
-  round.turns.each do |turn|
-    player = turn.player
-    moves = turn.moves
-    
-    # Check output of first round
-    raise if player.name == "*"
-
-    moves.each do |move|
-      calculate_hand(player, move)
+def parse_lil_turn(turn, signals)
+  new_moves = []
+  count = 0
+  turn.moves.each do |move|
+    if move.include?("??")
+      new_moves.push signals[count]
+      count += 1
+    else
+      new_moves.push move
     end
-    puts player.name, player.hand.inspect, "\n"
+  end
+
+  new_moves
+end
+
+@rounds.each_with_index do |round, i|
+  round.turns.each do |turn|
+    if turn.player.name == "Lil" && i > 0
+      turn.moves = parse_lil_turn(turn, @players["*"].hand[i])
+    end
+
+    turn.moves.each do |move|
+      action = move[/([-+][0-9JQKA?]{1,2}[CDHS?])/, 1]
+      card = action[1..-1]
+
+      case move[/:(\w+)/, 1]
+        when "discard", "*", nil
+          other_player = nil
+        else
+          other_player = move[/:(\w+)/, 1]
+      end
+
+      if action.start_with?  "+"
+        turn.player.add card
+        @players[other_player].remove(card) if other_player && other_player != "discard"
+      elsif action.start_with? "-"
+        turn.player.remove card
+        other_player ? @players[other_player].add(card) : @discard.push(card)
+      end
+    end
+
+    if turn.player.name == "Lil"
+      hand = turn.player.hand.select { |x| x != "??" }
+      puts hand.join(" ")
+    end
   end
 end
