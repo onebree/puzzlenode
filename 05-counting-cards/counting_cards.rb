@@ -26,7 +26,7 @@ class Player
     @name  = name
     @hand  = []
   end
-
+  
   def remove(card)
     @hand.delete card
   end
@@ -41,15 +41,16 @@ end
   "Shady" => Player.new("Shady"),
   "Rocky" => Player.new("Rocky"),
   "Danny" => Player.new("Danny"),
-  "Lil"   => Player.new("Lil"),
-  "*"     => Player.new("*")
+  "Lil"   => Player.new("Lil")
 }
+
+@signals = Hash.new { |h,k| h[k] = [] }
 
 @rounds = []
 
 @cards = []
 @cards_in_play = []
-@discard = []
+@discarded = []
 @known = []
 
 %w(2 3 4 5 6 7 8 9 10 A J Q K).each do |x|
@@ -64,28 +65,34 @@ File.foreach("SAMPLE_INPUT.txt") do |turn|
   player = turn[/\A(\w+|\*) /, 1]
   moves  = turn.scan /[-+][0-9JQKA\?]{1,2}[CDHS\?]:*\w*/
 
-  turn = Turn.new(@players[player], moves)
+  if player == "*"
+    index = @rounds.length.pred
+    @signals[index].push moves
+  else
+    turn = Turn.new(@players[player], moves)
 
-  if player == "Shady"
-    @round   = Round.new
-    @rounds << @round
-  elsif player == "*"
-    # 2D array, where each 1D element is a round
-    # Round 0 is dealing the cards, so an empty array is added instead
-    signal = @players[player]
-    signal.add([]) if signal.hand.empty?
-    signal.add moves
+    if player == "Shady"
+      @round   = Round.new
+      @rounds << @round
+    end
+
+    @round << turn
   end
-
-  @round << turn
 end
 
-def parse_lil_turn(turn, signals)
+
+def parse_lil_turn(turn, round)
+  signal = find_correct_signal(round)
+  #puts signal.inspect
+
+  #puts turn.moves.inspect
+
   new_moves = []
   count = 0
   turn.moves.each do |move|
+    
     if move.include?("??")
-      new_moves.push signals[count]
+      new_moves.push signal[count]
       count += 1
     else
       new_moves.push move
@@ -95,35 +102,59 @@ def parse_lil_turn(turn, signals)
   new_moves
 end
 
+def correct_signal?(signal)
+  signal.each do |move|
+    action = move[/([-+][0-9JQKA?]{1,2}[CDHS?])/, 1]
+    sign = action[0]
+    card = action[1..-1]
+    other_player = move[/:(Rocky|Danny|Shady)/, 1]
+
+    if @discarded.include?(card)
+      return false
+    elsif sign == "+" && @players["Lil"].hand.include?(card)
+      return false
+    elsif sign == "+" && other_player && @players[other_player].hand.include?(card)
+      return false
+    end
+  end
+
+  return true
+end
+
+def find_correct_signal(round)
+  @signals[round].select { |s| correct_signal?(s) }.flatten
+end
+
 @rounds.each_with_index do |round, i|
   round.turns.each do |turn|
+    #puts turn.player.name
+    #puts turn.moves.inspect
+
     if turn.player.name == "Lil" && i > 0
-      turn.moves = parse_lil_turn(turn, @players["*"].hand[i])
+      #puts turn.moves.inspect
+      turn.moves = parse_lil_turn(turn, i)
+      #puts turn.moves.inspect
     end
+    #puts turn.moves.inspect
 
     turn.moves.each do |move|
+  
+      #puts move.inspect
       action = move[/([-+][0-9JQKA?]{1,2}[CDHS?])/, 1]
       card = action[1..-1]
-
-      case move[/:(\w+)/, 1]
-        when "discard", "*", nil
-          other_player = nil
-        else
-          other_player = move[/:(\w+)/, 1]
-      end
+      other_player = move[/:(Rocky|Danny|Shady)/, 1]
 
       if action.start_with?  "+"
         turn.player.add card
-        @players[other_player].remove(card) if other_player && other_player != "discard"
       elsif action.start_with? "-"
         turn.player.remove card
-        other_player ? @players[other_player].add(card) : @discard.push(card)
+        unless other_player
+          @discarded.push(card)
+          @cards_in_play.delete(card)
+        end
       end
     end
 
-    if turn.player.name == "Lil"
-      hand = turn.player.hand.select { |x| x != "??" }
-      puts hand.join(" ")
-    end
+    puts turn.player.hand.join(" ") if turn.player.name == "Lil"
   end
 end
