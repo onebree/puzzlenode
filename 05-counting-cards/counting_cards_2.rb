@@ -31,25 +31,20 @@ def valid_signal?(signal, unknowns)
     card = card(move)
     other_player = other_player(move)
 
-
     # if playing a card that's already discarded
     if @discarded.include?(card)
       return false
 
-    # if drawing a card that Lil already has
-    elsif sign == "+" && @branch["Lil"].include?(card)
+    # ensures the order and sign/other of signals match
+    elsif sign != sign(unknown) || other_player != other_player(unknown)
       return false
 
     # if passing a card possessed by someone else
     elsif sign == "-" && @branch.values_at("Shady", "Danny", "Rocky").include?(card)
       return false
 
-    # if passing a card that another player already has
-    elsif sign == "-" && @branch[other_player].include?(card)
-      return false
-
-    # ensures the order of signals match
-    elsif sign != sign(unknown) || other_player != other_player(unknown)
+    # if drawing a card that Lil already has
+    elsif sign == "+" && @branch["Lil"].include?(card)
       return false
     end
   end
@@ -79,11 +74,10 @@ turn = ["+??:Shady", "-6D:discard", "-??:Danny", "+??", "+??"]
 
 unknowns = turn.select { |x| x.include?("??") }
 
-@branch = Marshal.load(Marshal.dump(@hands))
-
 valid_signals = signals.select { |x| valid_signal?(x, unknowns) }
 
 valid_signals.each do |signal|
+  @branch = Marshal.load(Marshal.dump(@hands))
   # Replace unknowns with hints from signal
   new_moves = []
   count = 0
