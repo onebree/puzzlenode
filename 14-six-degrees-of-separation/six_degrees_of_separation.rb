@@ -1,25 +1,17 @@
-tweets = File.readlines("complex_input.txt")
-
 @results = Hash.new { |h,k| h[k] = [] }
 
-tweets.each do |tweet|
-  owner    = tweet.scan(/\A(\w+):/).flatten[0]
+File.foreach("complex_input.txt") do |tweet|
+  owner    = tweet[/\A(\w+):/, 1]
   mentions = tweet.scan(/@(\w+)/).flatten
-  @results[owner] = @results[owner] + mentions
+
+  @results[owner] |= mentions
 end
 
-@results.each do |owner, mentions|
-  @results.keys.each do |o|
-    next if o == owner
-    next if mentions.include?(o) && @results[o].include?(owner)
-    mentions.delete(o)
-  end
 
-  mentions.uniq!
-  m = mentions.dup
-  m.each do |x|
-    mentions.delete(x) unless @results.keys.include?(x)
-  end
+accounts = @results.keys
+
+accounts.each do |a|
+  @results[a].select! { |b| accounts.include?(b) && @results[b].include?(a) }
 end
 
 @connections = {}
